@@ -222,15 +222,17 @@ function clearSetupError() {
   setupError.textContent = "";
 }
 
-function getMrWhiteExcludedIndices() {
+// "Premier joueur" = premier de l'ordre de révélation (celui qui reçoit son mot
+// en premier), pas le premier nom saisi à l'écran de configuration.
+function getMrWhiteExcludedIds(order) {
   const restriction = document.querySelector('input[name="spyRestriction"]:checked').value;
-  if (restriction === "not-first") return [0];
-  if (restriction === "not-first-two") return [0, 1];
+  if (restriction === "not-first") return [order[0]];
+  if (restriction === "not-first-two") return [order[0], order[1]];
   return [];
 }
 
-function assignRolesAndWords(total) {
-  const undercoverCount = clamp(parseInt(undercoverCountInput.value, 10) || 0, 1, total);
+function assignRolesAndWords(sessionPlayers, order) {
+  const undercoverCount = clamp(parseInt(undercoverCountInput.value, 10) || 0, 1, sessionPlayers.length);
   const mrWhiteCount = mrWhiteCheckbox.checked ? 1 : 0;
   const pairs = getActivePairs();
 
@@ -239,21 +241,21 @@ function assignRolesAndWords(total) {
   const wordCivil = swap ? wordB : wordA;
   const wordUndercover = swap ? wordA : wordB;
 
-  const roles = new Array(total).fill(null);
-  let remaining = [...Array(total).keys()];
+  const roles = {}; // id -> role
+  let remaining = sessionPlayers.map((p) => p.id);
 
   if (mrWhiteCount === 1) {
-    const excluded = getMrWhiteExcludedIndices();
-    let eligible = remaining.filter((i) => !excluded.includes(i));
+    const excluded = getMrWhiteExcludedIds(order);
+    let eligible = remaining.filter((id) => !excluded.includes(id));
     if (eligible.length === 0) eligible = remaining;
-    const blancIndex = eligible[Math.floor(Math.random() * eligible.length)];
-    roles[blancIndex] = "blanc";
-    remaining = remaining.filter((i) => i !== blancIndex);
+    const blancId = eligible[Math.floor(Math.random() * eligible.length)];
+    roles[blancId] = "blanc";
+    remaining = remaining.filter((id) => id !== blancId);
   }
 
   const shuffledRemaining = shuffle(remaining);
-  shuffledRemaining.slice(0, undercoverCount).forEach((i) => (roles[i] = "undercover"));
-  shuffledRemaining.slice(undercoverCount).forEach((i) => (roles[i] = "civil"));
+  shuffledRemaining.slice(0, undercoverCount).forEach((id) => (roles[id] = "undercover"));
+  shuffledRemaining.slice(undercoverCount).forEach((id) => (roles[id] = "civil"));
 
   return { roles, wordCivil, wordUndercover };
 }
@@ -293,22 +295,22 @@ function startGame() {
 }
 
 function startManche() {
-  const total = state.sessionPlayers.length;
-  const { roles, wordCivil, wordUndercover } = assignRolesAndWords(total);
+  const order = shuffle(state.sessionPlayers.map((p) => p.id));
+  const { roles, wordCivil, wordUndercover } = assignRolesAndWords(state.sessionPlayers, order);
 
   state.wordCivil = wordCivil;
   state.wordUndercover = wordUndercover;
-  state.players = state.sessionPlayers.map((sp, i) => ({
+  state.players = state.sessionPlayers.map((sp) => ({
     id: sp.id,
     name: sp.name,
-    role: roles[i],
-    word: roles[i] === "civil" ? wordCivil : roles[i] === "undercover" ? wordUndercover : "",
+    role: roles[sp.id],
+    word: roles[sp.id] === "civil" ? wordCivil : roles[sp.id] === "undercover" ? wordUndercover : "",
     alive: true,
     eliminatedTurn: null,
     pointsEarned: 0,
   }));
 
-  state.playerOrder = shuffle(state.players.map((p) => p.id));
+  state.playerOrder = order;
 
   state.turn = 1;
   state.revealIndex = 0;
@@ -539,10 +541,29 @@ validateVoteBtn.addEventListener("click", () => {
 });
 
 // ---------- Élimination ----------
+const eliminationRevealText = document.getElementById("eliminationRevealText");
+const continueAfterRevealBtn = document.getElementById("continueAfterRevealBtn");
+let pendingEliminatedId = null;
+
 function eliminatePlayer(playerId) {
   const player = state.players.find((p) => p.id === playerId);
   player.alive = false;
   player.eliminatedTurn = state.turn;
+  pendingEliminatedId = playerId;
+
+  let text = `${player.name} était ${ROLE_LABELS[player.role]} !`;
+  if (player.role !== "blanc") {
+    text += `\nSon mot était : « ${player.word} »`;
+  }
+  eliminationRevealText.textContent = text;
+  eliminationRevealText.style.whiteSpace = "pre-line";
+  showModal("eliminationModal");
+}
+
+continueAfterRevealBtn.addEventListener("click", () => {
+  hideModal("eliminationModal");
+  const player = state.players.find((p) => p.id === pendingEliminatedId);
+  pendingEliminatedId = null;
 
   if (player.role === "blanc") {
     document.getElementById("mrWhiteGuessInput").value = "";
@@ -550,7 +571,7 @@ function eliminatePlayer(playerId) {
   } else {
     checkWinOrContinue();
   }
-}
+});
 
 // ---------- Mr. White guess modal ----------
 const mrWhiteGuessInput = document.getElementById("mrWhiteGuessInput");
