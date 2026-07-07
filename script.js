@@ -551,12 +551,7 @@ function eliminatePlayer(playerId) {
   player.eliminatedTurn = state.turn;
   pendingEliminatedId = playerId;
 
-  let text = `${player.name} était ${ROLE_LABELS[player.role]} !`;
-  if (player.role !== "blanc") {
-    text += `\nSon mot était : « ${player.word} »`;
-  }
-  eliminationRevealText.textContent = text;
-  eliminationRevealText.style.whiteSpace = "pre-line";
+  eliminationRevealText.textContent = `${player.name} était ${ROLE_LABELS[player.role]} !`;
   showModal("eliminationModal");
 }
 
