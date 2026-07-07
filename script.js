@@ -1,13 +1,28 @@
+// ---------- Points attribués au camp gagnant d'une manche ----------
+const POINTS = { civil: 2, undercover: 10, blanc: 6 };
+
 // ---------- État du jeu ----------
 const state = {
-  players: [], // { id, name, role: 'civil'|'undercover'|'blanc', word, alive, eliminatedRound }
-  round: 1,
+  sessionPlayers: [], // { id, name } - stable pour toute la partie (plusieurs manches)
+  scores: {}, // id -> points cumulés sur la partie
+  manche: 1,
+
+  players: [], // manche en cours : { id, name, role, word, alive, eliminatedTurn, pointsEarned }
+  playerOrder: [], // ids dans l'ordre aléatoire de passage (révélation + description)
+  turn: 1, // tour de description/vote au sein de la manche en cours
   wordCivil: "",
   wordUndercover: "",
   revealIndex: 0,
   voteCounts: {}, // id -> nombre de votes
   tieRestrictedIds: null, // ids autorisés à voter en cas d'égalité
   pendingEliminationId: null,
+};
+
+const ROLE_LABELS = { civil: "CIVIL", undercover: "UNDERCOVER", blanc: "MR. WHITE" };
+const WINNER_TEXT = {
+  civil: "🎉 Les Civils gagnent la manche !",
+  undercover: "🕵️ Les Infiltrés gagnent la manche !",
+  blanc: "🎭 Mr. White gagne la manche !",
 };
 
 // ---------- Utilitaires ----------
@@ -39,6 +54,13 @@ function showScreen(id) {
 
 function showModal(id) {
   document.getElementById(id).classList.remove("hidden");
+}
+
+// Joueurs (en vie) dans l'ordre aléatoire de passage tiré pour la manche
+function aliveInOrder() {
+  return state.playerOrder
+    .map((id) => state.players.find((p) => p.id === id))
+    .filter((p) => p.alive);
 }
 
 function hideModal(id) {
@@ -112,6 +134,25 @@ function clearSetupError() {
   setupError.textContent = "";
 }
 
+function assignRolesAndWords(total) {
+  const undercoverCount = clamp(parseInt(undercoverCountInput.value, 10) || 0, 1, total);
+  const mrWhiteCount = mrWhiteCheckbox.checked ? 1 : 0;
+  const pairs = getPairsForSelectedCategory();
+
+  const [wordA, wordB] = pairs[Math.floor(Math.random() * pairs.length)];
+  const swap = Math.random() < 0.5;
+  const wordCivil = swap ? wordB : wordA;
+  const wordUndercover = swap ? wordA : wordB;
+
+  const order = shuffle([...Array(total).keys()]);
+  const roles = new Array(total);
+  order.slice(0, undercoverCount).forEach((i) => (roles[i] = "undercover"));
+  order.slice(undercoverCount, undercoverCount + mrWhiteCount).forEach((i) => (roles[i] = "blanc"));
+  order.slice(undercoverCount + mrWhiteCount).forEach((i) => (roles[i] = "civil"));
+
+  return { roles, wordCivil, wordUndercover };
+}
+
 function startGame() {
   clearSetupError();
 
@@ -120,8 +161,7 @@ function startGame() {
   const total = names.length;
 
   const undercoverCount = clamp(parseInt(undercoverCountInput.value, 10) || 0, 1, total);
-  const mrWhiteEnabled = mrWhiteCheckbox.checked;
-  const mrWhiteCount = mrWhiteEnabled ? 1 : 0;
+  const mrWhiteCount = mrWhiteCheckbox.checked ? 1 : 0;
   const civilCount = total - undercoverCount - mrWhiteCount;
 
   if (civilCount < 2) {
@@ -135,27 +175,33 @@ function startGame() {
     return;
   }
 
-  const [wordA, wordB] = pairs[Math.floor(Math.random() * pairs.length)];
-  const swap = Math.random() < 0.5;
-  state.wordCivil = swap ? wordB : wordA;
-  state.wordUndercover = swap ? wordA : wordB;
+  state.sessionPlayers = names.map((name, i) => ({ id: i, name }));
+  state.scores = {};
+  state.sessionPlayers.forEach((sp) => (state.scores[sp.id] = 0));
+  state.manche = 1;
 
-  const order = shuffle([...Array(total).keys()]);
-  const roles = new Array(total);
-  order.slice(0, undercoverCount).forEach((i) => (roles[i] = "undercover"));
-  order.slice(undercoverCount, undercoverCount + mrWhiteCount).forEach((i) => (roles[i] = "blanc"));
-  order.slice(undercoverCount + mrWhiteCount).forEach((i) => (roles[i] = "civil"));
+  startManche();
+}
 
-  state.players = names.map((name, i) => ({
-    id: i,
-    name,
+function startManche() {
+  const total = state.sessionPlayers.length;
+  const { roles, wordCivil, wordUndercover } = assignRolesAndWords(total);
+
+  state.wordCivil = wordCivil;
+  state.wordUndercover = wordUndercover;
+  state.players = state.sessionPlayers.map((sp, i) => ({
+    id: sp.id,
+    name: sp.name,
     role: roles[i],
-    word: roles[i] === "civil" ? state.wordCivil : roles[i] === "undercover" ? state.wordUndercover : "",
+    word: roles[i] === "civil" ? wordCivil : roles[i] === "undercover" ? wordUndercover : "",
     alive: true,
-    eliminatedRound: null,
+    eliminatedTurn: null,
+    pointsEarned: 0,
   }));
 
-  state.round = 1;
+  state.playerOrder = shuffle(state.players.map((p) => p.id));
+
+  state.turn = 1;
   state.revealIndex = 0;
   state.voteCounts = {};
   state.tieRestrictedIds = null;
@@ -170,23 +216,28 @@ const passNameEl = document.getElementById("passName");
 const revealCard = document.getElementById("revealCard");
 const nextPlayerBtn = document.getElementById("nextPlayerBtn");
 
+function currentRevealPlayer() {
+  const id = state.playerOrder[state.revealIndex];
+  return state.players.find((p) => p.id === id);
+}
+
 function renderReveal() {
-  const player = state.players[state.revealIndex];
+  const player = currentRevealPlayer();
   passNameEl.textContent = `Passe le téléphone à ${player.name}`;
-  revealCard.textContent = "Touche pour révéler ton rôle";
+  revealCard.textContent = "Touche pour révéler ton mot";
   revealCard.className = "reveal-card";
   nextPlayerBtn.classList.add("hidden");
 }
 
 revealCard.addEventListener("click", () => {
-  const player = state.players[state.revealIndex];
-  revealCard.classList.add("shown", `role-${player.role}`);
-  if (player.role === "civil") {
-    revealCard.textContent = `Tu es CIVIL\nMot : ${player.word}`;
-  } else if (player.role === "undercover") {
-    revealCard.textContent = `Tu es UNDERCOVER\nMot : ${player.word}`;
+  const player = currentRevealPlayer();
+  // Le rôle n'est jamais affiché ici : seul le mot compte, comme dans le vrai jeu.
+  // On ne le découvre qu'après avoir été éliminé (ou à la fin de la manche).
+  revealCard.classList.add("shown");
+  if (player.word) {
+    revealCard.textContent = player.word;
   } else {
-    revealCard.textContent = "Tu es MR. WHITE\nTu n'as pas de mot, bluffe !";
+    revealCard.textContent = "Tu n'as pas de mot...\nÉcoute les autres et improvise !";
   }
   revealCard.style.whiteSpace = "pre-line";
   nextPlayerBtn.classList.remove("hidden");
@@ -194,7 +245,7 @@ revealCard.addEventListener("click", () => {
 
 nextPlayerBtn.addEventListener("click", () => {
   state.revealIndex++;
-  if (state.revealIndex < state.players.length) {
+  if (state.revealIndex < state.playerOrder.length) {
     renderReveal();
   } else {
     showScreen("screen-clues");
@@ -208,21 +259,19 @@ const cluesOrderList = document.getElementById("cluesOrderList");
 const goToVoteBtn = document.getElementById("goToVoteBtn");
 
 function renderClues() {
-  cluesTitle.textContent = `Manche ${state.round} - Description`;
+  cluesTitle.textContent = `Manche ${state.manche} · Tour ${state.turn} - Description`;
   cluesOrderList.innerHTML = "";
-  state.players
-    .filter((p) => p.alive)
-    .forEach((p, i) => {
-      const li = document.createElement("li");
-      const num = document.createElement("span");
-      num.className = "order-num";
-      num.textContent = i + 1;
-      const name = document.createElement("span");
-      name.textContent = p.name;
-      li.appendChild(num);
-      li.appendChild(name);
-      cluesOrderList.appendChild(li);
-    });
+  aliveInOrder().forEach((p, i) => {
+    const li = document.createElement("li");
+    const num = document.createElement("span");
+    num.className = "order-num";
+    num.textContent = i + 1;
+    const name = document.createElement("span");
+    name.textContent = p.name;
+    li.appendChild(num);
+    li.appendChild(name);
+    cluesOrderList.appendChild(li);
+  });
 }
 
 goToVoteBtn.addEventListener("click", () => {
@@ -237,9 +286,9 @@ const voteList = document.getElementById("voteList");
 const validateVoteBtn = document.getElementById("validateVoteBtn");
 
 function renderVote() {
-  voteTitle.textContent = `Manche ${state.round} - Vote`;
+  voteTitle.textContent = `Manche ${state.manche} · Tour ${state.turn} - Vote`;
 
-  const alivePlayers = state.players.filter((p) => p.alive);
+  const alivePlayers = aliveInOrder();
   const votable = state.tieRestrictedIds
     ? alivePlayers.filter((p) => state.tieRestrictedIds.includes(p.id))
     : alivePlayers;
@@ -312,38 +361,18 @@ validateVoteBtn.addEventListener("click", () => {
   }
 
   state.tieRestrictedIds = null;
-  openEliminationConfirm(maxIds[0]);
+  eliminatePlayer(maxIds[0]);
 });
 
 // ---------- Elimination modal ----------
-const eliminationText = document.getElementById("eliminationText");
-const eliminationConfirmStep = document.getElementById("eliminationConfirmStep");
-const eliminationRevealStep = document.getElementById("eliminationRevealStep");
 const eliminationRevealText = document.getElementById("eliminationRevealText");
-const confirmEliminateBtn = document.getElementById("confirmEliminateBtn");
-const cancelEliminateBtn = document.getElementById("cancelEliminateBtn");
 const continueAfterRevealBtn = document.getElementById("continueAfterRevealBtn");
 
-function openEliminationConfirm(playerId) {
-  state.pendingEliminationId = playerId;
+function eliminatePlayer(playerId) {
   const player = state.players.find((p) => p.id === playerId);
-  eliminationText.textContent = `Éliminer ${player.name} ?`;
-  eliminationConfirmStep.classList.remove("hidden");
-  eliminationRevealStep.classList.add("hidden");
-  showModal("eliminationModal");
-}
-
-cancelEliminateBtn.addEventListener("click", () => {
-  hideModal("eliminationModal");
-  state.pendingEliminationId = null;
-});
-
-const ROLE_LABELS = { civil: "CIVIL", undercover: "UNDERCOVER", blanc: "MR. WHITE" };
-
-confirmEliminateBtn.addEventListener("click", () => {
-  const player = state.players.find((p) => p.id === state.pendingEliminationId);
   player.alive = false;
-  player.eliminatedRound = state.round;
+  player.eliminatedTurn = state.turn;
+  state.pendingEliminationId = playerId;
 
   let text = `${player.name} était ${ROLE_LABELS[player.role]} !`;
   if (player.role !== "blanc") {
@@ -352,9 +381,8 @@ confirmEliminateBtn.addEventListener("click", () => {
   eliminationRevealText.textContent = text;
   eliminationRevealText.style.whiteSpace = "pre-line";
 
-  eliminationConfirmStep.classList.add("hidden");
-  eliminationRevealStep.classList.remove("hidden");
-});
+  showModal("eliminationModal");
+}
 
 continueAfterRevealBtn.addEventListener("click", () => {
   hideModal("eliminationModal");
@@ -378,7 +406,7 @@ submitGuessBtn.addEventListener("click", () => {
   const guess = normalize(mrWhiteGuessInput.value);
   hideModal("mrWhiteModal");
   if (guess && guess === normalize(state.wordCivil)) {
-    endGame("blanc");
+    finishManche("blanc");
   } else {
     checkWinOrContinue();
   }
@@ -396,37 +424,30 @@ function checkWinOrContinue() {
   const aliveInfiltrators = alive.filter((p) => p.role === "undercover" || p.role === "blanc").length;
 
   if (aliveInfiltrators === 0) {
-    endGame("civil");
+    finishManche("civil");
   } else if (aliveCivil <= 1) {
-    endGame("undercover");
+    finishManche("undercover");
   } else {
-    state.round++;
+    state.turn++;
     state.tieRestrictedIds = null;
     showScreen("screen-clues");
     renderClues();
   }
 }
 
-// ---------- End screen ----------
-const winnerBanner = document.getElementById("winnerBanner");
-const eliminatedList = document.getElementById("eliminatedList");
+// ---------- Fin de manche (la partie continue, aux joueurs de décider) ----------
+const mancheWinnerBanner = document.getElementById("mancheWinnerBanner");
+const mancheRolesList = document.getElementById("mancheRolesList");
+const mancheScoreboard = document.getElementById("mancheScoreboard");
+const nextMancheBtn = document.getElementById("nextMancheBtn");
+const endSessionBtn = document.getElementById("endSessionBtn");
 
-const WINNER_TEXT = {
-  civil: "🎉 Les Civils gagnent !",
-  undercover: "🕵️ Les Infiltrés gagnent !",
-  blanc: "🎭 Mr. White gagne !",
-};
-
-function endGame(winnerType) {
-  showScreen("screen-end");
-  winnerBanner.textContent = WINNER_TEXT[winnerType];
-  winnerBanner.className = `winner-banner ${winnerType}`;
-
-  eliminatedList.innerHTML = "";
-  const sorted = state.players.slice().sort((a, b) => {
-    const ra = a.eliminatedRound ?? Infinity;
-    const rb = b.eliminatedRound ?? Infinity;
-    return ra - rb;
+function renderRolesList(container, players, showPoints) {
+  container.innerHTML = "";
+  const sorted = players.slice().sort((a, b) => {
+    const ta = a.eliminatedTurn ?? Infinity;
+    const tb = b.eliminatedTurn ?? Infinity;
+    return ta - tb;
   });
 
   sorted.forEach((p) => {
@@ -434,19 +455,83 @@ function endGame(winnerType) {
     row.className = "eliminated-row";
 
     const name = document.createElement("span");
-    name.textContent = p.alive
-      ? `${p.name} (survivant)`
-      : `${p.name} — éliminé manche ${p.eliminatedRound}`;
+    name.textContent = p.name;
 
     const tag = document.createElement("span");
     tag.className = `role-tag ${p.role}`;
-    tag.textContent = ROLE_LABELS[p.role] + (p.word ? ` · ${p.word}` : "");
+    let tagText = ROLE_LABELS[p.role] + (p.word ? ` · ${p.word}` : "");
+    if (showPoints) tagText += ` · +${p.pointsEarned ?? 0} pts`;
+    tag.textContent = tagText;
 
     row.appendChild(name);
     row.appendChild(tag);
-    eliminatedList.appendChild(row);
+    container.appendChild(row);
   });
 }
+
+function renderScoreboard(container) {
+  container.innerHTML = "";
+  const sorted = state.sessionPlayers
+    .slice()
+    .sort((a, b) => (state.scores[b.id] || 0) - (state.scores[a.id] || 0));
+
+  sorted.forEach((sp, i) => {
+    const row = document.createElement("div");
+    row.className = "score-row" + (i === 0 && state.scores[sp.id] > 0 ? " top1" : "");
+
+    const rank = document.createElement("span");
+    rank.className = "score-rank";
+    rank.textContent = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+
+    const name = document.createElement("span");
+    name.className = "score-name";
+    name.textContent = sp.name;
+
+    const pts = document.createElement("span");
+    pts.className = "score-points";
+    pts.textContent = `${state.scores[sp.id] || 0} pts`;
+
+    row.appendChild(rank);
+    row.appendChild(name);
+    row.appendChild(pts);
+    container.appendChild(row);
+  });
+}
+
+function finishManche(winnerType) {
+  state.players.forEach((p) => {
+    let pts = 0;
+    if (winnerType === "civil" && p.role === "civil") {
+      pts = POINTS.civil;
+    } else if (winnerType === "undercover" && (p.role === "undercover" || p.role === "blanc")) {
+      pts = p.role === "undercover" ? POINTS.undercover : POINTS.blanc;
+    } else if (winnerType === "blanc" && p.role === "blanc") {
+      pts = POINTS.blanc;
+    }
+    p.pointsEarned = pts;
+    state.scores[p.id] = (state.scores[p.id] || 0) + pts;
+  });
+
+  mancheWinnerBanner.textContent = `${WINNER_TEXT[winnerType]} (Manche ${state.manche})`;
+  mancheWinnerBanner.className = `winner-banner ${winnerType}`;
+
+  renderRolesList(mancheRolesList, state.players, true);
+  renderScoreboard(mancheScoreboard);
+
+  showScreen("screen-manche-result");
+}
+
+nextMancheBtn.addEventListener("click", () => {
+  state.manche++;
+  startManche();
+});
+
+const finalScoreboard = document.getElementById("finalScoreboard");
+
+endSessionBtn.addEventListener("click", () => {
+  renderScoreboard(finalScoreboard);
+  showScreen("screen-end");
+});
 
 document.getElementById("newGameBtn").addEventListener("click", () => {
   showScreen("screen-setup");

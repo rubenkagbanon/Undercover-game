@@ -67,28 +67,36 @@
     <button class="btn-primary" id="validateVoteBtn">Valider le vote</button>
   </section>
 
-  <!-- END -->
-  <section id="screen-end" class="screen">
-    <p class="winner-banner" id="winnerBanner"></p>
+  <!-- MANCHE RESULT (fin d'une manche, la partie continue) -->
+  <section id="screen-manche-result" class="screen">
+    <p class="winner-banner" id="mancheWinnerBanner"></p>
     <div class="card">
-      <p class="section-title" style="margin-top:0">Résultats</p>
-      <div id="eliminatedList"></div>
+      <p class="section-title" style="margin-top:0">Rôles de cette manche</p>
+      <div id="mancheRolesList"></div>
+    </div>
+    <div class="card">
+      <p class="section-title" style="margin-top:0">Classement général</p>
+      <div id="mancheScoreboard"></div>
+    </div>
+    <button class="btn-primary" id="nextMancheBtn">Manche suivante ▶</button>
+    <button class="btn-secondary" id="endSessionBtn">Terminer la partie</button>
+  </section>
+
+  <!-- END (fin de la partie complète, choisie par l'utilisateur) -->
+  <section id="screen-end" class="screen">
+    <p class="winner-banner" id="finalBanner">🏁 Partie terminée !</p>
+    <div class="card">
+      <p class="section-title" style="margin-top:0">Classement final</p>
+      <div id="finalScoreboard"></div>
     </div>
     <button class="btn-primary" id="newGameBtn">Nouvelle partie</button>
   </section>
 
-  <!-- MODAL: confirmation / révélation d'élimination -->
+  <!-- MODAL: révélation d'élimination -->
   <div class="modal-overlay hidden" id="eliminationModal">
     <div class="card modal-card">
-      <div id="eliminationConfirmStep">
-        <p id="eliminationText" class="reveal-text"></p>
-        <button class="btn-danger" id="confirmEliminateBtn">Confirmer l'élimination</button>
-        <button class="btn-secondary" id="cancelEliminateBtn">Annuler</button>
-      </div>
-      <div id="eliminationRevealStep" class="hidden">
-        <p id="eliminationRevealText" class="reveal-text"></p>
-        <button class="btn-primary" id="continueAfterRevealBtn">Continuer</button>
-      </div>
+      <p id="eliminationRevealText" class="reveal-text"></p>
+      <button class="btn-primary" id="continueAfterRevealBtn">Continuer</button>
     </div>
   </div>
 
@@ -110,6 +118,7 @@
       <p class="hint text-left"><strong>Undercover</strong> : reçoivent un mot proche mais différent. Ils gagnent s'ils survivent jusqu'à ce qu'il ne reste qu'un civil.</p>
       <p class="hint text-left"><strong>Mr. White</strong> : ne reçoit aucun mot, doit bluffer. S'il est éliminé, il peut deviner le mot des civils pour gagner instantanément.</p>
       <p class="hint text-left">Chaque manche : 1) chacun décrit son mot à voix haute, 2) discussion libre, 3) vote pour éliminer un joueur.</p>
+      <p class="hint text-left"><strong>Points</strong> : quand leur camp remporte la manche, les Civils marquent 2 points chacun, l'Undercover 10 points et Mr. White 6 points (aussi en cas de victoire par devinette). Les scores se cumulent sur plusieurs manches, jusqu'à ce que vous décidiez de terminer la partie.</p>
       <button class="btn-primary" id="closeRulesBtn">Fermer</button>
     </div>
   </div>
