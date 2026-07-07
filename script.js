@@ -15,6 +15,59 @@ const state = {
   revealIndex: 0,
   voteCounts: {}, // id -> nombre de votes
   tieRestrictedIds: null, // ids autorisés à voter en cas d'égalité
+  selectedCategories: new Set(), // noms des catégories de mots actives
+  voteRevealIndex: 0, // vote anonyme : index du votant en cours
+  anonymousVotes: {}, // vote anonyme : voterId -> targetId
+};
+
+const CATEGORY_EMOJI = {
+  "Animaux": "🐶",
+  "Nourriture & Boissons": "🍔",
+  "Objets du quotidien": "🧰",
+  "Métiers": "👷",
+  "Lieux": "🗺️",
+  "Sports": "⚽",
+  "Technologie": "💻",
+  "Nature": "🌿",
+  "Transport": "🚗",
+  "Personnages": "🦸",
+  "Corps & Santé": "🩺",
+  "Concepts": "🤔",
+  "Fruits & Légumes": "🍎",
+  "Vêtements": "👕",
+  "Musique & Instruments": "🎸",
+  "École & Études": "🎒",
+  "Fêtes & Événements": "🎉",
+  "Météo & Saisons": "🌦️",
+  "Argent & Commerce": "💰",
+  "Formes & Couleurs": "🎨",
+  "Cinéma & Séries": "🎬",
+  "Internet & Réseaux sociaux": "📱",
+  "Jeux": "🎲",
+  "Maison & Meubles": "🛋️",
+  "Outils & Bricolage": "🔧",
+  "Espace & Astronomie": "🚀",
+  "Mythologie & Légendes": "🐉",
+  "Géographie & Pays": "🌍",
+  "Desserts & Sucreries": "🍰",
+  "Émotions & Expressions": "😊",
+  "Phénomènes & Catastrophes": "🌪️",
+  "Boissons": "🥤",
+  "Communication": "📣",
+  "Temps & Horloge": "⏰",
+  "Voyage & Vacances": "✈️",
+  "Amour & Relations": "❤️",
+  "Métiers artistiques": "🎭",
+  "Insectes & Petites bêtes": "🐞",
+  "Oiseaux": "🐦",
+  "Armes & Défense (fiction)": "⚔️",
+  "Matières & Textures": "🧵",
+  "Marques & Applications": "📲",
+  "Jeux vidéo": "🎮",
+  "Franchises & Pop Culture": "🌟",
+  "Monuments & Lieux touristiques": "🗽",
+  "Musique & Festivals": "🎵",
+  "Réseaux & Communication numérique": "💬",
 };
 
 const ROLE_LABELS = { civil: "CIVIL", undercover: "UNDERCOVER", blanc: "MR. WHITE" };
@@ -71,9 +124,15 @@ const playerCountInput = document.getElementById("playerCountInput");
 const playerNamesContainer = document.getElementById("playerNamesContainer");
 const undercoverCountInput = document.getElementById("undercoverCountInput");
 const mrWhiteCheckbox = document.getElementById("mrWhiteCheckbox");
-const categorySelect = document.getElementById("categorySelect");
 const wordsCountText = document.getElementById("wordsCountText");
 const setupError = document.getElementById("setupError");
+const categoryGrid = document.getElementById("categoryGrid");
+const categoryActions = document.querySelector(".category-actions");
+const selectAllCategoriesBtn = document.getElementById("selectAllCategoriesBtn");
+const selectNoneCategoriesBtn = document.getElementById("selectNoneCategoriesBtn");
+const customWordsCheckbox = document.getElementById("customWordsCheckbox");
+const customWordsSection = document.getElementById("customWordsSection");
+const customWordsInput = document.getElementById("customWordsInput");
 
 function syncPlayerNameInputs() {
   const count = clamp(parseInt(playerCountInput.value, 10) || 0, 3, 20);
@@ -92,35 +151,65 @@ function syncPlayerNameInputs() {
   }
 }
 
-function populateCategorySelect() {
-  categorySelect.innerHTML = "";
-  const allOption = document.createElement("option");
-  allOption.value = "all";
-  allOption.textContent = "Toutes les catégories";
-  categorySelect.appendChild(allOption);
-
+function populateCategoryGrid() {
+  categoryGrid.innerHTML = "";
   WORD_CATEGORIES.forEach((cat) => {
-    const opt = document.createElement("option");
-    opt.value = cat.name;
-    opt.textContent = cat.name;
-    categorySelect.appendChild(opt);
+    state.selectedCategories.add(cat.name);
+
+    const tile = document.createElement("div");
+    tile.className = "category-tile selected";
+
+    const emoji = document.createElement("span");
+    emoji.className = "tile-emoji";
+    emoji.textContent = CATEGORY_EMOJI[cat.name] || "🎲";
+
+    const label = document.createElement("span");
+    label.textContent = cat.name;
+
+    tile.appendChild(emoji);
+    tile.appendChild(label);
+    tile.addEventListener("click", () => {
+      tile.classList.toggle("selected");
+      if (tile.classList.contains("selected")) {
+        state.selectedCategories.add(cat.name);
+      } else {
+        state.selectedCategories.delete(cat.name);
+      }
+      updateWordsCountText();
+    });
+    categoryGrid.appendChild(tile);
   });
 
   updateWordsCountText();
 }
 
-function getPairsForSelectedCategory() {
-  const selected = categorySelect.value;
-  if (selected === "all") {
-    return WORD_CATEGORIES.flatMap((c) => c.pairs);
+function setAllCategoriesSelected(selected) {
+  state.selectedCategories = new Set(selected ? WORD_CATEGORIES.map((c) => c.name) : []);
+  categoryGrid.querySelectorAll(".category-tile").forEach((tile) => {
+    tile.classList.toggle("selected", selected);
+  });
+  updateWordsCountText();
+}
+
+function parseCustomWords() {
+  return customWordsInput.value
+    .split("\n")
+    .map((line) => line.split(",").map((w) => w.trim()).filter(Boolean))
+    .filter((parts) => parts.length === 2);
+}
+
+function getActivePairs() {
+  if (customWordsCheckbox.checked) {
+    return parseCustomWords();
   }
-  const cat = WORD_CATEGORIES.find((c) => c.name === selected);
-  return cat ? cat.pairs : [];
+  return WORD_CATEGORIES.filter((c) => state.selectedCategories.has(c.name)).flatMap((c) => c.pairs);
 }
 
 function updateWordsCountText() {
-  const pairs = getPairsForSelectedCategory();
-  wordsCountText.textContent = `${pairs.length} paires de mots disponibles`;
+  const pairs = getActivePairs();
+  wordsCountText.textContent = customWordsCheckbox.checked
+    ? `${pairs.length} paire(s) de mots personnalisés`
+    : `${pairs.length} paires de mots disponibles`;
 }
 
 function showSetupError(msg) {
@@ -133,21 +222,38 @@ function clearSetupError() {
   setupError.textContent = "";
 }
 
+function getMrWhiteExcludedIndices() {
+  const restriction = document.querySelector('input[name="spyRestriction"]:checked').value;
+  if (restriction === "not-first") return [0];
+  if (restriction === "not-first-two") return [0, 1];
+  return [];
+}
+
 function assignRolesAndWords(total) {
   const undercoverCount = clamp(parseInt(undercoverCountInput.value, 10) || 0, 1, total);
   const mrWhiteCount = mrWhiteCheckbox.checked ? 1 : 0;
-  const pairs = getPairsForSelectedCategory();
+  const pairs = getActivePairs();
 
   const [wordA, wordB] = pairs[Math.floor(Math.random() * pairs.length)];
   const swap = Math.random() < 0.5;
   const wordCivil = swap ? wordB : wordA;
   const wordUndercover = swap ? wordA : wordB;
 
-  const order = shuffle([...Array(total).keys()]);
-  const roles = new Array(total);
-  order.slice(0, undercoverCount).forEach((i) => (roles[i] = "undercover"));
-  order.slice(undercoverCount, undercoverCount + mrWhiteCount).forEach((i) => (roles[i] = "blanc"));
-  order.slice(undercoverCount + mrWhiteCount).forEach((i) => (roles[i] = "civil"));
+  const roles = new Array(total).fill(null);
+  let remaining = [...Array(total).keys()];
+
+  if (mrWhiteCount === 1) {
+    const excluded = getMrWhiteExcludedIndices();
+    let eligible = remaining.filter((i) => !excluded.includes(i));
+    if (eligible.length === 0) eligible = remaining;
+    const blancIndex = eligible[Math.floor(Math.random() * eligible.length)];
+    roles[blancIndex] = "blanc";
+    remaining = remaining.filter((i) => i !== blancIndex);
+  }
+
+  const shuffledRemaining = shuffle(remaining);
+  shuffledRemaining.slice(0, undercoverCount).forEach((i) => (roles[i] = "undercover"));
+  shuffledRemaining.slice(undercoverCount).forEach((i) => (roles[i] = "civil"));
 
   return { roles, wordCivil, wordUndercover };
 }
@@ -168,9 +274,13 @@ function startGame() {
     return;
   }
 
-  const pairs = getPairsForSelectedCategory();
+  const pairs = getActivePairs();
   if (pairs.length === 0) {
-    showSetupError("Aucune paire de mots disponible pour cette catégorie.");
+    showSetupError(
+      customWordsCheckbox.checked
+        ? "Ajoutez au moins une paire de mots personnalisés (une par ligne : MotCivil, MotUndercover)."
+        : "Sélectionnez au moins une catégorie de mots."
+    );
     return;
   }
 
@@ -229,11 +339,11 @@ function renderReveal() {
 
 revealCard.addEventListener("click", () => {
   const player = currentRevealPlayer();
-  // Le rôle n'est jamais affiché ici : seul le mot compte, comme dans le vrai jeu.
-  // On ne le découvre qu'après avoir été éliminé (ou à la fin de la manche).
+  const revealRole = document.querySelector('input[name="revealRole"]:checked').value;
   revealCard.classList.add("shown");
   if (player.word) {
-    revealCard.textContent = player.word;
+    revealCard.textContent =
+      revealRole === "visible" && player.role === "undercover" ? `Tu es UNDERCOVER\n${player.word}` : player.word;
   } else {
     revealCard.textContent = "Tu n'as pas de mot...\nÉcoute les autres et improvise !";
   }
@@ -282,14 +392,42 @@ const voteTitle = document.getElementById("voteTitle");
 const voteHint = document.getElementById("voteHint");
 const voteList = document.getElementById("voteList");
 const validateVoteBtn = document.getElementById("validateVoteBtn");
+const voteVocalCard = document.getElementById("voteVocalCard");
+const voteAnonCard = document.getElementById("voteAnonCard");
+const voteAnonPassName = document.getElementById("voteAnonPassName");
+const voteAnonCandidates = document.getElementById("voteAnonCandidates");
+
+function currentVoteMethod() {
+  return document.querySelector('input[name="voteMethod"]:checked').value;
+}
+
+function votableAlivePlayers() {
+  const alivePlayers = aliveInOrder();
+  return state.tieRestrictedIds
+    ? alivePlayers.filter((p) => state.tieRestrictedIds.includes(p.id))
+    : alivePlayers;
+}
 
 function renderVote() {
   voteTitle.textContent = `Manche ${state.manche} · Tour ${state.turn} - Vote`;
 
-  const alivePlayers = aliveInOrder();
-  const votable = state.tieRestrictedIds
-    ? alivePlayers.filter((p) => state.tieRestrictedIds.includes(p.id))
-    : alivePlayers;
+  if (currentVoteMethod() === "anonymous") {
+    voteVocalCard.classList.add("hidden");
+    validateVoteBtn.classList.add("hidden");
+    voteAnonCard.classList.remove("hidden");
+    state.voteRevealIndex = 0;
+    state.anonymousVotes = {};
+    renderVoteAnonymousStep();
+  } else {
+    voteAnonCard.classList.add("hidden");
+    voteVocalCard.classList.remove("hidden");
+    validateVoteBtn.classList.remove("hidden");
+    renderVoteVocal();
+  }
+}
+
+function renderVoteVocal() {
+  const votable = votableAlivePlayers();
 
   voteHint.textContent = state.tieRestrictedIds
     ? "Égalité ! Revotez uniquement entre les joueurs suivants :"
@@ -339,14 +477,40 @@ function renderVote() {
   });
 }
 
-validateVoteBtn.addEventListener("click", () => {
-  const entries = Object.entries(state.voteCounts);
-  const max = Math.max(...entries.map(([, v]) => v));
+function renderVoteAnonymousStep() {
+  const voters = votableAlivePlayers();
+  const voter = voters[state.voteRevealIndex];
+  voteAnonPassName.textContent = `Passe le téléphone à ${voter.name}`;
 
-  if (max === 0) {
-    alert("Attribuez au moins un vote avant de valider.");
-    return;
-  }
+  voteAnonCandidates.innerHTML = "";
+  voters
+    .filter((p) => p.id !== voter.id)
+    .forEach((p) => {
+      const btn = document.createElement("button");
+      btn.className = "btn-secondary";
+      btn.textContent = p.name;
+      btn.addEventListener("click", () => {
+        state.anonymousVotes[voter.id] = p.id;
+        state.voteRevealIndex++;
+        if (state.voteRevealIndex < voters.length) {
+          renderVoteAnonymousStep();
+        } else {
+          state.voteCounts = {};
+          Object.values(state.anonymousVotes).forEach((targetId) => {
+            state.voteCounts[targetId] = (state.voteCounts[targetId] || 0) + 1;
+          });
+          resolveVote();
+        }
+      });
+      voteAnonCandidates.appendChild(btn);
+    });
+}
+
+function resolveVote() {
+  const entries = Object.entries(state.voteCounts);
+  const max = Math.max(0, ...entries.map(([, v]) => v));
+
+  if (max === 0) return;
 
   const maxIds = entries.filter(([, v]) => v === max).map(([id]) => parseInt(id, 10));
 
@@ -360,6 +524,18 @@ validateVoteBtn.addEventListener("click", () => {
 
   state.tieRestrictedIds = null;
   eliminatePlayer(maxIds[0]);
+}
+
+validateVoteBtn.addEventListener("click", () => {
+  const entries = Object.entries(state.voteCounts);
+  const max = Math.max(0, ...entries.map(([, v]) => v));
+
+  if (max === 0) {
+    alert("Attribuez au moins un vote avant de valider.");
+    return;
+  }
+
+  resolveVote();
 });
 
 // ---------- Élimination ----------
@@ -522,8 +698,19 @@ document.getElementById("closeRulesBtn").addEventListener("click", () => hideMod
 
 // ---------- Init ----------
 playerCountInput.addEventListener("change", syncPlayerNameInputs);
-categorySelect.addEventListener("change", updateWordsCountText);
 document.getElementById("startBtn").addEventListener("click", startGame);
 
+selectAllCategoriesBtn.addEventListener("click", () => setAllCategoriesSelected(true));
+selectNoneCategoriesBtn.addEventListener("click", () => setAllCategoriesSelected(false));
+
+customWordsCheckbox.addEventListener("change", () => {
+  const useCustom = customWordsCheckbox.checked;
+  customWordsSection.classList.toggle("hidden", !useCustom);
+  categoryGrid.classList.toggle("disabled", useCustom);
+  categoryActions.classList.toggle("disabled", useCustom);
+  updateWordsCountText();
+});
+customWordsInput.addEventListener("input", updateWordsCountText);
+
 syncPlayerNameInputs();
-populateCategorySelect();
+populateCategoryGrid();

@@ -27,13 +27,59 @@
         <input type="checkbox" id="mrWhiteCheckbox">
         <label for="mrWhiteCheckbox">Activer Mr. White</label>
       </div>
+    </div>
 
-      <label for="categorySelect">Catégorie de mots</label>
-      <select id="categorySelect"></select>
-      <p class="words-count" id="wordsCountText"></p>
+    <details class="collapsible card" open>
+      <summary>Mots</summary>
+      <div class="collapsible-body">
+        <p class="hint text-left" style="margin:0 0 12px">Choisissez avec quels paquets de mots jouer</p>
+        <div class="category-actions">
+          <button type="button" class="btn-secondary" id="selectAllCategoriesBtn">Tout sélectionner</button>
+          <button type="button" class="btn-secondary" id="selectNoneCategoriesBtn">Tout désélectionner</button>
+        </div>
+        <div class="category-grid" id="categoryGrid"></div>
 
+        <div class="or-separator"><span>ou</span></div>
+
+        <div class="checkbox-row">
+          <input type="checkbox" id="customWordsCheckbox">
+          <label for="customWordsCheckbox">Utiliser des mots personnalisés</label>
+        </div>
+        <div id="customWordsSection" class="hidden">
+          <label for="customWordsInput">Un mot par ligne : MotCivil, MotUndercover</label>
+          <textarea id="customWordsInput" rows="5" placeholder="Chat, Chien&#10;Café, Thé"></textarea>
+        </div>
+
+        <p class="words-count" id="wordsCountText"></p>
+      </div>
+    </details>
+
+    <details class="collapsible card">
+      <summary>Options avancées</summary>
+      <div class="collapsible-body">
+        <p class="hint text-left" style="margin:0 0 8px">Comment préférez-vous voter ?</p>
+        <div class="radio-group">
+          <label class="radio-option"><input type="radio" name="voteMethod" value="vocal" checked> Vote à voix haute (plus rapide)</label>
+          <label class="radio-option"><input type="radio" name="voteMethod" value="anonymous"> Vote anonyme (en passant le téléphone)</label>
+        </div>
+
+        <p class="hint text-left" style="margin:0 0 8px">Qui peut être Mr. White ?</p>
+        <div class="radio-group">
+          <label class="radio-option"><input type="radio" name="spyRestriction" value="anyone" checked> N'importe qui</label>
+          <label class="radio-option"><input type="radio" name="spyRestriction" value="not-first"> Pas le premier joueur</label>
+          <label class="radio-option"><input type="radio" name="spyRestriction" value="not-first-two"> Pas les deux premiers joueurs</label>
+        </div>
+
+        <p class="hint text-left" style="margin:0 0 8px">Voulez-vous que les Undercover sachent qu'ils sont infiltrés ?</p>
+        <div class="radio-group">
+          <label class="radio-option"><input type="radio" name="revealRole" value="hidden" checked> Non, gardez-le secret</label>
+          <label class="radio-option"><input type="radio" name="revealRole" value="visible"> Oui, ils doivent le savoir</label>
+        </div>
+      </div>
+    </details>
+
+    <div class="card">
       <p class="error-text hidden" id="setupError"></p>
-
       <button class="btn-primary" id="startBtn">Démarrer la partie</button>
       <button class="btn-secondary" id="rulesBtn" type="button">Comment jouer ?</button>
     </div>
@@ -60,11 +106,18 @@
   <!-- VOTE -->
   <section id="screen-vote" class="screen">
     <p class="section-title" id="voteTitle">Manche 1 - Vote</p>
-    <div class="card">
+
+    <div class="card" id="voteVocalCard">
       <p class="hint text-left" id="voteHint">Comptez les votes à voix haute et appuyez sur + pour chaque joueur désigné :</p>
       <div id="voteList"></div>
     </div>
     <button class="btn-primary" id="validateVoteBtn">Valider le vote</button>
+
+    <div class="card hidden" id="voteAnonCard">
+      <p class="reveal-text" id="voteAnonPassName"></p>
+      <p class="hint text-left" style="margin-top:0">Touche discrètement le nom du joueur que tu accuses :</p>
+      <div id="voteAnonCandidates"></div>
+    </div>
   </section>
 
   <!-- MANCHE RESULT (fin d'une manche, la partie continue) -->
