@@ -11,8 +11,150 @@
   <h1>UNDERCOVER</h1>
   <p class="subtitle">Le jeu de déduction où un mot peut tout changer</p>
 
+  <!-- MODE SELECT -->
+  <section id="screen-mode-select" class="screen active">
+    <div class="mode-card" id="modeLocalBtn">
+      <span class="mode-card-emoji">🤝</span>
+      <span class="mode-card-title">Jouer sur cet appareil</span>
+      <span class="mode-card-desc">Un seul téléphone qu'on se passe entre joueurs</span>
+    </div>
+    <div class="mode-card" id="modeRemoteBtn">
+      <span class="mode-card-emoji">🌐</span>
+      <span class="mode-card-title">Jouer à distance</span>
+      <span class="mode-card-desc">Chacun sur son téléphone, connectés via un lien</span>
+    </div>
+  </section>
+
+  <!-- REMOTE: home (créer / rejoindre) -->
+  <section id="screen-remote-home" class="screen">
+    <button class="btn-primary" id="remoteCreateBtn">Créer une partie</button>
+    <button class="btn-primary" id="remoteJoinBtn">Rejoindre une partie</button>
+    <button class="btn-secondary" id="remoteHomeBackBtn">Retour</button>
+  </section>
+
+  <!-- REMOTE: create (nom de l'hôte) -->
+  <section id="screen-remote-create" class="screen">
+    <div class="card">
+      <label for="remoteHostNameInput">Ton nom</label>
+      <input type="text" id="remoteHostNameInput" placeholder="Ton prénom">
+      <p class="error-text hidden" id="remoteCreateError"></p>
+      <button class="btn-primary" id="remoteCreateSubmitBtn">Créer la partie</button>
+      <button class="btn-secondary" id="remoteCreateBackBtn">Retour</button>
+    </div>
+  </section>
+
+  <!-- REMOTE: join (code + nom) -->
+  <section id="screen-remote-join" class="screen">
+    <div class="card">
+      <label for="remoteJoinCodeInput">Code de la partie</label>
+      <input type="text" id="remoteJoinCodeInput" placeholder="ABC123" style="text-transform:uppercase">
+      <label for="remoteJoinNameInput">Ton nom</label>
+      <input type="text" id="remoteJoinNameInput" placeholder="Ton prénom">
+      <p class="error-text hidden" id="remoteJoinError"></p>
+      <button class="btn-primary" id="remoteJoinSubmitBtn">Rejoindre</button>
+      <button class="btn-secondary" id="remoteJoinBackBtn">Retour</button>
+    </div>
+  </section>
+
+  <!-- REMOTE: lobby (hôte + invités) -->
+  <section id="screen-remote-lobby" class="screen">
+    <div class="card">
+      <p class="section-title" style="margin-top:0">Code de la partie</p>
+      <p class="room-code" id="roomCodeDisplay"></p>
+      <button class="btn-secondary" id="copyRoomLinkBtn">Copier le lien à partager</button>
+    </div>
+
+    <div class="card">
+      <p class="section-title" style="margin-top:0">Joueurs connectés</p>
+      <div id="remotePlayersList"></div>
+    </div>
+
+    <div class="card hidden" id="remoteHostSettingsCard">
+      <label for="remoteUndercoverCountInput">Nombre d'Undercover</label>
+      <input type="number" id="remoteUndercoverCountInput" min="1" value="1">
+      <div class="checkbox-row">
+        <input type="checkbox" id="remoteMrWhiteCheckbox">
+        <label for="remoteMrWhiteCheckbox">Activer Mr. White</label>
+      </div>
+      <p class="hint text-left" style="margin:0">Toutes les catégories de mots sont utilisées en mode à distance.</p>
+    </div>
+
+    <p class="error-text hidden" id="remoteLobbyError"></p>
+    <button class="btn-primary hidden" id="remoteStartGameBtn">Démarrer la partie</button>
+    <p class="hint" id="remoteWaitingHint">En attente que l'hôte démarre la partie...</p>
+  </section>
+
+  <!-- REMOTE: écran de jeu (adaptatif selon la phase) -->
+  <section id="screen-remote-game" class="screen">
+    <p class="manche-badge" id="remoteManchebadge" style="display:block;text-align:center;margin:0 auto 14px;width:fit-content"></p>
+
+    <!-- phase: reveal -->
+    <div class="card hidden" id="remotePhaseReveal">
+      <p class="section-title" style="margin-top:0">Ton mot</p>
+      <div class="reveal-card shown" id="remoteWordCard"></div>
+      <button class="btn-primary" id="remoteReadyBtn" style="margin-top:16px">J'ai vu mon mot</button>
+      <p class="hint text-left" id="remoteReadyStatus"></p>
+    </div>
+
+    <!-- phase: clues -->
+    <div class="card hidden" id="remotePhaseClues">
+      <p class="hint text-left" style="margin:0 0 12px">À voix haute et dans cet ordre, chacun décrit son mot :</p>
+      <ol class="order-list" id="remoteCluesOrderList"></ol>
+      <button class="btn-primary hidden" id="remoteGoToVoteBtn">Discussion terminée → Vote</button>
+      <p class="hint" id="remoteCluesWaitingHint">En attente que l'hôte lance le vote...</p>
+    </div>
+
+    <!-- phase: vote -->
+    <div class="card hidden" id="remotePhaseVote">
+      <p class="hint text-left" id="remoteVoteHint" style="margin:0 0 12px">Touche le nom du joueur que tu accuses :</p>
+      <div id="remoteVoteCandidates"></div>
+      <p class="hint" id="remoteVoteStatus"></p>
+    </div>
+
+    <!-- phase: elimination reveal -->
+    <div class="card hidden" id="remotePhaseElimination">
+      <p class="reveal-text" id="remoteEliminationText"></p>
+    </div>
+
+    <!-- phase: Mr. White guess -->
+    <div class="card hidden" id="remotePhaseMrWhite">
+      <p class="reveal-text" id="remoteMrWhiteText"></p>
+      <div id="remoteMrWhiteGuessBox" class="hidden">
+        <input type="text" id="remoteMrWhiteGuessInput" placeholder="Mot des civils...">
+        <button class="btn-primary" id="remoteSubmitGuessBtn">Valider la réponse</button>
+        <button class="btn-secondary" id="remoteSkipGuessBtn">Ne pas deviner</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- REMOTE: résultats de manche -->
+  <section id="screen-remote-manche-result" class="screen">
+    <p class="winner-banner" id="remoteMancheWinnerBanner"></p>
+    <div class="card">
+      <p class="section-title" style="margin-top:0">Rôles de cette manche</p>
+      <div id="remoteMancheRolesList"></div>
+    </div>
+    <div class="card">
+      <p class="section-title" style="margin-top:0">Classement général</p>
+      <div id="remoteMancheScoreboard"></div>
+    </div>
+    <button class="btn-primary hidden" id="remoteNextMancheBtn">Manche suivante ▶</button>
+    <button class="btn-secondary hidden" id="remoteEndSessionBtn">Terminer la partie</button>
+    <p class="hint" id="remoteMancheResultWaitingHint">En attente de l'hôte...</p>
+  </section>
+
+  <!-- REMOTE: fin de partie -->
+  <section id="screen-remote-end" class="screen">
+    <p class="winner-banner">🏁 Partie terminée !</p>
+    <div class="card">
+      <p class="section-title" style="margin-top:0">Classement final</p>
+      <div id="remoteFinalScoreboard"></div>
+    </div>
+    <button class="btn-primary hidden" id="remoteNewGameBtn">Nouvelle partie (mêmes joueurs)</button>
+  </section>
+
   <!-- SETUP -->
-  <section id="screen-setup" class="screen active">
+  <section id="screen-setup" class="screen">
     <div class="card">
       <label for="playerCountInput">Nombre de joueurs (3 à 20)</label>
       <input type="number" id="playerCountInput" min="3" max="20" value="3">
@@ -171,5 +313,7 @@
 
 <script src="words.js"></script>
 <script src="script.js"></script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="remote.js"></script>
 </body>
 </html>

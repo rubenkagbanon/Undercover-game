@@ -601,6 +601,52 @@ select {
   color: var(--muted);
 }
 
+/* ---------- Sélection de mode & jeu à distance ---------- */
+.mode-card {
+  cursor: pointer;
+  user-select: none;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  border-radius: var(--radius-xl);
+  padding: 26px 22px;
+  margin-bottom: 16px;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 12px 40px rgba(20, 10, 60, .25), inset 0 1px 0 rgba(255, 255, 255, .8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  transition: transform .12s ease;
+}
+.mode-card:active { transform: scale(.97); }
+.mode-card-emoji { font-size: 2.4rem; }
+.mode-card-title { font-weight: 800; font-size: 1.15rem; color: var(--text); }
+.mode-card-desc { font-size: .85rem; color: var(--muted); }
+
+.room-code {
+  text-align: center;
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  color: var(--ios-indigo);
+  margin: 4px 0 16px;
+  font-family: "SF Mono", "Courier New", monospace;
+}
+
+.connection-status {
+  text-align: center;
+  font-size: .8rem;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 14px;
+}
+.connection-status.connected { background: rgba(48, 209, 88, .15); color: #1a8a3c; }
+.connection-status.connecting { background: rgba(255, 159, 10, .15); color: #b5720a; }
+.connection-status.error { background: rgba(255, 69, 58, .15); color: var(--ios-red); }
+
 /* ---------- Mode sombre (iOS Dark Mode) ---------- */
 @media (prefers-color-scheme: dark) {
   :root {
