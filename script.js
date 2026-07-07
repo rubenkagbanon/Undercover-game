@@ -15,7 +15,6 @@ const state = {
   revealIndex: 0,
   voteCounts: {}, // id -> nombre de votes
   tieRestrictedIds: null, // ids autorisés à voter en cas d'égalité
-  pendingEliminationId: null,
 };
 
 const ROLE_LABELS = { civil: "CIVIL", undercover: "UNDERCOVER", blanc: "MR. WHITE" };
@@ -205,7 +204,6 @@ function startManche() {
   state.revealIndex = 0;
   state.voteCounts = {};
   state.tieRestrictedIds = null;
-  state.pendingEliminationId = null;
 
   showScreen("screen-reveal");
   renderReveal();
@@ -364,30 +362,11 @@ validateVoteBtn.addEventListener("click", () => {
   eliminatePlayer(maxIds[0]);
 });
 
-// ---------- Elimination modal ----------
-const eliminationRevealText = document.getElementById("eliminationRevealText");
-const continueAfterRevealBtn = document.getElementById("continueAfterRevealBtn");
-
+// ---------- Élimination ----------
 function eliminatePlayer(playerId) {
   const player = state.players.find((p) => p.id === playerId);
   player.alive = false;
   player.eliminatedTurn = state.turn;
-  state.pendingEliminationId = playerId;
-
-  let text = `${player.name} était ${ROLE_LABELS[player.role]} !`;
-  if (player.role !== "blanc") {
-    text += `\nSon mot était : « ${player.word} »`;
-  }
-  eliminationRevealText.textContent = text;
-  eliminationRevealText.style.whiteSpace = "pre-line";
-
-  showModal("eliminationModal");
-}
-
-continueAfterRevealBtn.addEventListener("click", () => {
-  hideModal("eliminationModal");
-  const player = state.players.find((p) => p.id === state.pendingEliminationId);
-  state.pendingEliminationId = null;
 
   if (player.role === "blanc") {
     document.getElementById("mrWhiteGuessInput").value = "";
@@ -395,7 +374,7 @@ continueAfterRevealBtn.addEventListener("click", () => {
   } else {
     checkWinOrContinue();
   }
-});
+}
 
 // ---------- Mr. White guess modal ----------
 const mrWhiteGuessInput = document.getElementById("mrWhiteGuessInput");
