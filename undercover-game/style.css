@@ -228,3 +228,73 @@ button:active { transform: scale(0.97); }
   font-size: .8rem;
   margin-bottom: 18px;
 }
+
+.hidden { display: none !important; }
+
+.text-left { text-align: left; }
+
+select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  font-size: 1rem;
+  margin-bottom: 14px;
+  background: #fff;
+}
+
+.error-text {
+  color: var(--undercover);
+  font-size: .85rem;
+  font-weight: 600;
+  margin: -6px 0 14px;
+}
+
+.modal-card { max-width: 400px; }
+
+.reveal-text {
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.order-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.order-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f9fafb;
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.order-list .order-num {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: .8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vote-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.vote-count {
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 20px;
+  text-align: center;
+}

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Undercover - Jeu de déduction</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <h1>Undercover</h1>
+  <p class="subtitle">Le jeu de déduction où un mot peut tout changer</p>
+
+  <!-- SETUP -->
+  <section id="screen-setup" class="screen active">
+    <div class="card">
+      <label for="playerCountInput">Nombre de joueurs (3 à 20)</label>
+      <input type="number" id="playerCountInput" min="3" max="20" value="3">
+
+      <label>Noms des joueurs</label>
+      <div id="playerNamesContainer"></div>
+
+      <label for="undercoverCountInput">Nombre d'Undercover</label>
+      <input type="number" id="undercoverCountInput" min="1" value="1">
+
+      <div class="checkbox-row">
+        <input type="checkbox" id="mrWhiteCheckbox">
+        <label for="mrWhiteCheckbox">Activer Mr. White</label>
+      </div>
+
+      <label for="categorySelect">Catégorie de mots</label>
+      <select id="categorySelect"></select>
+      <p class="words-count" id="wordsCountText"></p>
+
+      <p class="error-text hidden" id="setupError"></p>
+
+      <button class="btn-primary" id="startBtn">Démarrer la partie</button>
+      <button class="btn-secondary" id="rulesBtn" type="button">Comment jouer ?</button>
+    </div>
+  </section>
+
+  <!-- REVEAL -->
+  <section id="screen-reveal" class="screen">
+    <p class="pass-name" id="passName"></p>
+    <div class="reveal-card" id="revealCard">Touche pour révéler ton rôle</div>
+    <p class="hint">Ne montre l'écran à personne d'autre !</p>
+    <button class="btn-primary hidden" id="nextPlayerBtn">Joueur suivant</button>
+  </section>
+
+  <!-- CLUES -->
+  <section id="screen-clues" class="screen">
+    <p class="section-title" id="cluesTitle">Manche 1 - Description</p>
+    <div class="card">
+      <p class="hint text-left">À voix haute et dans cet ordre, chacun décrit son mot en un mot ou une courte phrase :</p>
+      <ol class="order-list" id="cluesOrderList"></ol>
+    </div>
+    <button class="btn-primary" id="goToVoteBtn">Discussion terminée → Vote</button>
+  </section>
+
+  <!-- VOTE -->
+  <section id="screen-vote" class="screen">
+    <p class="section-title" id="voteTitle">Manche 1 - Vote</p>
+    <div class="card">
+      <p class="hint text-left" id="voteHint">Comptez les votes à voix haute et appuyez sur + pour chaque joueur désigné :</p>
+      <div id="voteList"></div>
+    </div>
+    <button class="btn-primary" id="validateVoteBtn">Valider le vote</button>
+  </section>
+
+  <!-- END -->
+  <section id="screen-end" class="screen">
+    <p class="winner-banner" id="winnerBanner"></p>
+    <div class="card">
+      <p class="section-title" style="margin-top:0">Résultats</p>
+      <div id="eliminatedList"></div>
+    </div>
+    <button class="btn-primary" id="newGameBtn">Nouvelle partie</button>
+  </section>
+
+  <!-- MODAL: confirmation / révélation d'élimination -->
+  <div class="modal-overlay hidden" id="eliminationModal">
+    <div class="card modal-card">
+      <div id="eliminationConfirmStep">
+        <p id="eliminationText" class="reveal-text"></p>
+        <button class="btn-danger" id="confirmEliminateBtn">Confirmer l'élimination</button>
+        <button class="btn-secondary" id="cancelEliminateBtn">Annuler</button>
+      </div>
+      <div id="eliminationRevealStep" class="hidden">
+        <p id="eliminationRevealText" class="reveal-text"></p>
+        <button class="btn-primary" id="continueAfterRevealBtn">Continuer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: devinette Mr. White -->
+  <div class="modal-overlay hidden" id="mrWhiteModal">
+    <div class="card modal-card">
+      <p class="reveal-text">Mr. White a été démasqué ! Dernière chance : deviner le mot des civils ?</p>
+      <input type="text" id="mrWhiteGuessInput" placeholder="Mot des civils...">
+      <button class="btn-primary" id="submitGuessBtn">Valider la réponse</button>
+      <button class="btn-secondary" id="skipGuessBtn">Ne pas deviner</button>
+    </div>
+  </div>
+
+  <!-- MODAL: règles -->
+  <div class="modal-overlay hidden" id="rulesModal">
+    <div class="card modal-card">
+      <p class="section-title" style="margin-top:0">Règles rapides</p>
+      <p class="hint text-left"><strong>Civils</strong> : reçoivent tous le même mot. Ils gagnent en éliminant tous les infiltrés.</p>
+      <p class="hint text-left"><strong>Undercover</strong> : reçoivent un mot proche mais différent. Ils gagnent s'ils survivent jusqu'à ce qu'il ne reste qu'un civil.</p>
+      <p class="hint text-left"><strong>Mr. White</strong> : ne reçoit aucun mot, doit bluffer. S'il est éliminé, il peut deviner le mot des civils pour gagner instantanément.</p>
+      <p class="hint text-left">Chaque manche : 1) chacun décrit son mot à voix haute, 2) discussion libre, 3) vote pour éliminer un joueur.</p>
+      <button class="btn-primary" id="closeRulesBtn">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script src="words.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
